@@ -1,10 +1,15 @@
 # Import the necessary libraries
-import numpy as np
 import random
+
+import numpy as np
+
 random.seed(42)
+
+
 # Define a function to simulate the roll of a die
 def roll_die():
     return np.random.randint(1, 7)
+
 
 # Define a dictionary to represent the game board,
 # where the keys are the squares on the board and the
@@ -36,6 +41,8 @@ game_board = {
 hash = {}
 freq = {}
 boxmap = {}
+
+
 def simulate_game():
     # Start the player at square 1
     current_square = 0
@@ -48,7 +55,7 @@ def simulate_game():
         turns += 1
 
         # Move the player to the new square
-        if (current_square  + squares_to_move) > 100:
+        if (current_square + squares_to_move) > 100:
             current_square = current_square
             continue
         else:
@@ -73,51 +80,46 @@ def simulate_game():
     # Return the number of turns it took for the player to reach the end of the board
     return turns
 
+
 # Simulate a large number of games to estimate the expected number of turns
 num_games = 1000
 turns = []
 for i in range(num_games):
-
-    temp =simulate_game()
+    temp = simulate_game()
     # print(i,temp)
     turns.append(temp)
-
-
-
 
 # Print the average number of turns
 print(np.mean(turns))
 
 for i in hash.keys():
-    hash[i] = hash[i]/freq[i]
+    hash[i] = hash[i] / freq[i]
 # sort the keys in ascending order
 x = sorted(hash.keys())
 temp = []
 for i in x:
     temp.append(hash[i])
 # sort the boxmap values in descending order
-y = sorted(boxmap.values(),reverse=True)
-
+y = sorted(boxmap.values(), reverse=True)
 
 box_li = []
 for i in boxmap.keys():
-    tup = (boxmap[i],i)
+    tup = (boxmap[i], i)
     box_li.append(tup)
 
-sorted_box_li = sorted(box_li,reverse=True)
+sorted_box_li = sorted(box_li, reverse=True)
 # print(sorted_box_li)
 # Print the distribution of the boxes visited(probability of reaching box)
 summy = np.sum(turns)
 z = []
 for i in sorted_box_li:
-    z.append([i[0]/summy,i[1]])
+    z.append([i[0] / summy, i[1]])
 
-import seaborn as sns
 import matplotlib.pyplot as plt
 
 plt.title("The number of turns to win the game")
-plt.xlabel("Number of turns")
-plt.ylabel("Number of times games lasted this many turns")
+plt.xlabel("Simulation Index")
+plt.ylabel("Number of turns game lasted for")
 plt.plot(turns)
 plt.show()
 
@@ -135,5 +137,5 @@ plt.show()
 plt.title("Distribution of the boxes(cells on the board) visited")
 plt.xlabel("Box number")
 plt.ylabel("Probability of reaching box")
-plt.bar([i[1] for i in z],[i[0] for i in z])
+plt.bar([i[1] for i in z], [i[0] for i in z])
 plt.show()

@@ -71,6 +71,7 @@ print("The sum of all rows is 1: ", flag)
 import matplotlib.pyplot as plt
 
 plt.matshow(mat)
+plt.title("Transition Probability Matrix")
 plt.show()
 # Write all the values of the transition probability matrix mat into a csv file called "transition_matrix.csv"
 np.savetxt("matrix.csv", mat, delimiter=",")
@@ -132,8 +133,8 @@ for i in sorted_box_li:
 
 # Plot the histogram of the number of turns
 plt.title("The number of turns to win the game")
-plt.xlabel("Number of turns")
-plt.ylabel("Number of times games lasted this many turns")
+plt.xlabel("Index of the Simulation")
+plt.ylabel("Number of turns simulation lasted for")
 plt.plot(turns)
 plt.show()
 
@@ -157,7 +158,7 @@ def sharing_distribution(T, n):
     initial_distribution[0] = 1.
     b = initial_distribution @ matrix_exp(mat, n)
     np.savetxt("share.csv", b, delimiter=",")
-    plt.title("Initial Distribution after",n,"transitions")
+    plt.title("Initial Distribution after", n, "transitions")
     plt.bar(range(101), b)
     plt.show()
 
@@ -168,4 +169,4 @@ sharing_distribution(mat, 2)
 def limiting_distribution(M, n, epsilon):
     # compute M^n-1 and M^n and find the max difference between them if the max diff is below tolerance then its
     # limiting
-    pass
+
