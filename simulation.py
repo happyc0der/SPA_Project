@@ -57,6 +57,16 @@ def simulate_game():
         # Move the player to the new square
         if (current_square + squares_to_move) > 100:
             current_square = current_square
+            if current_square in boxmap.keys():
+                boxmap[current_square] = boxmap[current_square] + 1
+            else:
+                boxmap[current_square] = 1
+            if turns in hash.keys():
+                hash[turns] += current_square
+                freq[turns] += 1
+            else:
+                hash[turns] = current_square
+                freq[turns] = 1
             continue
         else:
             current_square += squares_to_move
@@ -118,7 +128,7 @@ for i in sorted_box_li:
 import matplotlib.pyplot as plt
 
 plt.title("The number of turns to win the game")
-plt.xlabel("Simulation Index")
+plt.xlabel("Simulation Index(0-based)")
 plt.ylabel("Number of turns game lasted for")
 plt.plot(turns)
 plt.show()

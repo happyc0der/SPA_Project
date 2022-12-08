@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 random.seed(42)
 # Setup of the snakes and ladders
@@ -28,8 +29,10 @@ game_board = {
 
 def matrix_exp(A, n):
     # Compute the exponent of the matrix using numpy's matrix power function
-    return np.linalg.matrix_power(A, n)
-
+    temp = A.copy()
+    for i in range(1,n):
+        temp = temp @ A
+    return temp
 
 def roll_die():
     return np.random.randint(1, 7)
@@ -67,8 +70,11 @@ flag = True
 for i in range(100):
     if sum(mat[i]) != 0.9999999999999999:
         flag = False
+        break
+
 print("The sum of all rows is 1: ", flag)
-import matplotlib.pyplot as plt
+
+
 
 plt.matshow(mat)
 plt.title("Transition Probability Matrix")
@@ -88,6 +94,7 @@ def simulate_game(T, current_state=0):
     turns = 0
     while current_state < 100:
         current_state = np.random.choice(range(101), p=T[current_state])
+        # print(current_state)
         turns += 1
         if current_state in boxmap.keys():
             boxmap[current_state] = boxmap[current_state] + 1
@@ -133,7 +140,7 @@ for i in sorted_box_li:
 
 # Plot the histogram of the number of turns
 plt.title("The number of turns to win the game")
-plt.xlabel("Index of the Simulation")
+plt.xlabel("Index of the Simulation(0-based)")
 plt.ylabel("Number of turns simulation lasted for")
 plt.plot(turns)
 plt.show()
@@ -158,15 +165,24 @@ def sharing_distribution(T, n):
     initial_distribution[0] = 1.
     b = initial_distribution @ matrix_exp(mat, n)
     np.savetxt("share.csv", b, delimiter=",")
-    plt.title("Initial Distribution after", n, "transitions")
+    plt.title("Initial Distribution after " +  str(n) + " transitions")
     plt.bar(range(101), b)
     plt.show()
 
+# feel free to change the input value here see the various distributions after some time
+sharing_distribution(mat, 10) # makes sense
 
-sharing_distribution(mat, 2)
 
 
 def limiting_distribution(M, n, epsilon):
     # compute M^n-1 and M^n and find the max difference between them if the max diff is below tolerance then its
     # limiting
+    diff = matrix_exp(M,n)-matrix_exp(M,n-1)
+    max_diff = np.max(diff)
+    if (max_diff<epsilon):
+        return True
 
+for i in range(2,100):
+    if limiting_distribution(mat, i, 0.0001):
+        print(i)
+        break
