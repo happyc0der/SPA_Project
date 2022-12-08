@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-
+roll_high = 6 # set to number of faces on the die.
 random.seed(42)
 # Setup of the snakes and ladders
 game_board = {
@@ -34,19 +34,19 @@ def matrix_exp(A, n):
         temp = temp @ A
     return temp
 
-def roll_die():
-    return np.random.randint(1, 7)
+def roll_die(roll_high):
+    return np.random.randint(1, roll_high+1)
 
 
 # Define a transition probability matrix for the above game board
-def transition_matrix():
+def transition_matrix(roll):
     # Initialize the transition matrix
     T = np.zeros((101, 101))
 
     # Loop through the squares on the board
     for i in range(0, 101):
         # Loop through the possible die rolls
-        for j in range(1, 7):
+        for j in range(1, roll+1):
             # Determine the new square
             new_square = i + j
             # Check if the new square is on a ladder or snake
@@ -57,14 +57,13 @@ def transition_matrix():
                 new_square = i
 
             # Update the transition matrix
-            T[i, new_square] += 1 / 6
-
+            T[i, new_square] += 1 / roll
     # Update the transition matrix for the last square
     T[100, 100] = 1
     return T
 
 
-mat = transition_matrix()
+mat = transition_matrix(6)
 flag = True
 # No need to check the last row we manually set it to 1
 for i in range(100):
@@ -181,8 +180,10 @@ def sharing_distribution_plot(T, n):
 plt.title("Game completion time")
 plt.xlabel("Number of turns")
 plt.ylabel("% of game completed")
-percent_dist = [sharing_distribution_plot(mat, n)[-1] * 100 for n in range(300)]
-plt.plot(np.arange(300), percent_dist)
+for roll in range(6, 9):
+    percent_dist = [sharing_distribution_plot(transition_matrix(roll), n)[-1] * 100 for n in range(300)]
+    plt.plot(np.arange(300), percent_dist)
+plt.legend(["Max die roll= 6", "Max die roll = 7", "Max die roll = 8"])
 plt.show()
 # feel free to change the input value here see the various distributions after some time
 sharing_distribution(mat, 10) # makes sense
