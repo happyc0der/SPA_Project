@@ -1,6 +1,7 @@
 # Import the necessary libraries
 import numpy as np
-
+import random
+random.seed(42)
 # Define a function to simulate the roll of a die
 def roll_die():
     return np.random.randint(1, 7)
@@ -104,7 +105,7 @@ for i in boxmap.keys():
     box_li.append(tup)
 
 sorted_box_li = sorted(box_li,reverse=True)
-print(sorted_box_li)
+# print(sorted_box_li)
 # Print the distribution of the boxes visited(probability of reaching box)
 summy = np.sum(turns)
 z = []
@@ -113,6 +114,13 @@ for i in sorted_box_li:
 
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+plt.title("The number of turns to win the game")
+plt.xlabel("Number of turns")
+plt.ylabel("Number of times games lasted this many turns")
+plt.plot(turns)
+plt.show()
+
 plt.title("Distribution of the number of turns")
 plt.xlabel("Number of turns")
 plt.ylabel("Average position")
@@ -120,11 +128,11 @@ plt.plot(temp)
 plt.show()
 
 # Draw a barplot using seaborn
-print([i[1] for i in z])
-print([i[0] for i in z])
-print(z)
+# print([i[1] for i in z])
+# print([i[0] for i in z])
+# print(z)
 # draw a histogram for z
-plt.title("Distribution of the boxes visited")
+plt.title("Distribution of the boxes(cells on the board) visited")
 plt.xlabel("Box number")
 plt.ylabel("Probability of reaching box")
 plt.bar([i[1] for i in z],[i[0] for i in z])
