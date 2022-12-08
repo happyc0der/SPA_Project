@@ -169,6 +169,21 @@ def sharing_distribution(T, n):
     plt.bar(range(101), b)
     plt.show()
 
+def sharing_distribution_plot(T, n):
+    mat = T.copy()
+    initial_distribution = np.zeros(101)
+    initial_distribution[0] = 1.
+    b = initial_distribution @ matrix_exp(mat, n)
+
+    np.savetxt("share.csv", b, delimiter=",")
+    return b
+
+plt.title("Game completion time")
+plt.xlabel("Number of turns")
+plt.ylabel("% of game completed")
+percent_dist = [sharing_distribution_plot(mat, n)[-1] * 100 for n in range(300)]
+plt.plot(np.arange(300), percent_dist)
+plt.show()
 # feel free to change the input value here see the various distributions after some time
 sharing_distribution(mat, 10) # makes sense
 
