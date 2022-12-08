@@ -35,11 +35,12 @@ def transition_matrix():
     T = np.zeros((101, 101))
 
     # Loop through the squares on the board
-    for i in range(1, 101):
+    for i in range(0, 101):
         # Loop through the possible die rolls
         for j in range(1, 7):
             # Determine the new square
             new_square = i + j
+
 
 
 
@@ -48,7 +49,8 @@ def transition_matrix():
                 new_square = game_board[new_square]
 
             if new_square>100:
-                new_square = 100
+                new_square = i
+
             # Update the transition matrix
             T[i, new_square] += 1 / 6
 
@@ -58,4 +60,19 @@ def transition_matrix():
     return T
 
 mat = transition_matrix()
-print(mat[79])
+flag = True
+# No need to check the last row we manually set it to 1
+for i in range(100):
+    if sum(mat[i]) != 0.9999999999999999:
+        flag = False
+print("The sum of all rows is 1: ", flag)
+import matplotlib.pyplot as plt
+plt.matshow(mat)
+plt.show()
+# use the above board to simulate a game of snakes and ladders
+
+def simulate_game(T,initial_distribution):
+    # Use matrix alegbra, to simulate the game
+    # We start with the initial distribution
+    # Then we multiply it by the transition matrix
+    pass
