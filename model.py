@@ -25,6 +25,9 @@ game_board = {
     98: 78
 }
 
+def matrix_exp(A, n):
+    # Compute the exponent of the matrix using numpy's matrix power function
+    return np.linalg.matrix_power(A, n)
 
 def roll_die():
     return np.random.randint(1, 7)
@@ -40,10 +43,6 @@ def transition_matrix():
         for j in range(1, 7):
             # Determine the new square
             new_square = i + j
-
-
-
-
             # Check if the new square is on a ladder or snake
             if new_square in game_board:
                 new_square = game_board[new_square]
@@ -76,3 +75,10 @@ def simulate_game(T,initial_distribution):
     # We start with the initial distribution
     # Then we multiply it by the transition matrix
     pass
+
+
+
+
+
+initial_distribution = np.zeros(101)
+initial_distribution[0] = 1
