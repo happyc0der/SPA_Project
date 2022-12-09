@@ -42,17 +42,28 @@ hash = {}
 freq = {}
 boxmap = {}
 
+transition_prob_simul = []
+# transition_prob_count = []
+
+for i in range(101):
+    transition_prob_simul.append([])
+    for j in range(101):
+        transition_prob_simul[i].append(0.)
 
 def simulate_game():
     # Start the player at square 1
     current_square = 0
     turns = 0
 
+    
     # Simulate the game until the player reaches the end of the board
     while current_square < 100:
         # Roll the die to determine the number of squares to move
         squares_to_move = roll_die()
         turns += 1
+
+        prev_square = current_square
+        
 
         # Move the player to the new square
         if (current_square + squares_to_move) > 100:
@@ -86,6 +97,8 @@ def simulate_game():
             freq[turns] = 1
 
         # print(current_square)
+        transition_prob_simul[prev_square][current_square] +=1
+
 
     # Return the number of turns it took for the player to reach the end of the board
     return turns
@@ -149,3 +162,19 @@ plt.xlabel("Box number")
 plt.ylabel("Probability of reaching box")
 plt.bar([i[1] for i in z], [i[0] for i in z])
 plt.show()
+
+transition_prob_simul = np.array(transition_prob_simul)
+for i in range(101):
+    sm = np.sum(transition_prob_simul[i])
+    for j in range(101):
+        if sm != 0:
+            transition_prob_simul[i][j] = transition_prob_simul[i][j]/sm
+
+    
+for i in transition_prob_simul:
+    for j in i:
+        print(j, end=' ')
+    print()
+
+
+
