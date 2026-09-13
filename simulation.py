@@ -1,180 +1,117 @@
-# Import the necessary libraries
-import random
+"""Brute-force simulation of Snakes and Ladders.
 
-import numpy as np
+Plays the game by actually rolling a die, and tallies the transitions it
+observes into an empirical transition matrix.  That matrix is the check on
+the analytic one built in model.py: the two should agree to within sampling
+noise on every reachable square.
 
-random.seed(42)
-
-
-# Define a function to simulate the roll of a die
-def roll_die():
-    return np.random.randint(1, 7)
-
-
-# Define a dictionary to represent the game board,
-# where the keys are the squares on the board and the
-# values are the corresponding positions after a ladder
-# or snake is landed on
-game_board = {
-    1: 38,
-    4: 14,
-    9: 31,
-    21: 42,
-    28: 84,
-    36: 44,
-    51: 67,
-    71: 91,
-    80: 100,
-    16: 6,
-    48: 26,
-    49: 11,
-    56: 53,
-    62: 19,
-    64: 60,
-    87: 24,
-    93: 73,
-    95: 75,
-    98: 78
-}
-
-# Define a function to simulate a single game of Snakes and Ladders
-hash = {}
-freq = {}
-boxmap = {}
-
-transition_prob_simul = []
-# transition_prob_count = []
-
-for i in range(101):
-    transition_prob_simul.append([])
-    for j in range(101):
-        transition_prob_simul[i].append(0.)
-
-def simulate_game():
-    # Start the player at square 1
-    current_square = 0
-    turns = 0
-
-    
-    # Simulate the game until the player reaches the end of the board
-    while current_square < 100:
-        # Roll the die to determine the number of squares to move
-        squares_to_move = roll_die()
-        turns += 1
-
-        prev_square = current_square
-        
-
-        # Move the player to the new square
-        if (current_square + squares_to_move) > 100:
-            current_square = current_square
-            if current_square in boxmap.keys():
-                boxmap[current_square] = boxmap[current_square] + 1
-            else:
-                boxmap[current_square] = 1
-            if turns in hash.keys():
-                hash[turns] += current_square
-                freq[turns] += 1
-            else:
-                hash[turns] = current_square
-                freq[turns] = 1
-            continue
-        else:
-            current_square += squares_to_move
-        # Check if the new square is on a ladder or snake
-        # and move the player to the corresponding square
-        if current_square in game_board:
-            current_square = game_board[current_square]
-        if current_square in boxmap.keys():
-            boxmap[current_square] = boxmap[current_square] + 1
-        else:
-            boxmap[current_square] = 1
-        if turns in hash.keys():
-            hash[turns] += current_square
-            freq[turns] += 1
-        else:
-            hash[turns] = current_square
-            freq[turns] = 1
-
-        # print(current_square)
-        transition_prob_simul[prev_square][current_square] +=1
-
-
-    # Return the number of turns it took for the player to reach the end of the board
-    return turns
-
-
-# Simulate a large number of games to estimate the expected number of turns
-num_games = 1000
-turns = []
-for i in range(num_games):
-    temp = simulate_game()
-    # print(i,temp)
-    turns.append(temp)
-
-# Print the average number of turns
-print(np.mean(turns))
-
-for i in hash.keys():
-    hash[i] = hash[i] / freq[i]
-# sort the keys in ascending order
-x = sorted(hash.keys())
-temp = []
-for i in x:
-    temp.append(hash[i])
-# sort the boxmap values in descending order
-y = sorted(boxmap.values(), reverse=True)
-
-box_li = []
-for i in boxmap.keys():
-    tup = (boxmap[i], i)
-    box_li.append(tup)
-
-sorted_box_li = sorted(box_li, reverse=True)
-# print(sorted_box_li)
-# Print the distribution of the boxes visited(probability of reaching box)
-summy = np.sum(turns)
-z = []
-for i in sorted_box_li:
-    z.append([i[0] / summy, i[1]])
+Run as a script:  python simulation.py
+"""
 
 import matplotlib.pyplot as plt
+import numpy as np
 
-plt.title("The number of turns to win the game")
-plt.xlabel("Simulation Index(0-based)")
-plt.ylabel("Number of turns game lasted for")
-plt.plot(turns)
-plt.show()
+import model
+from model import N_SQUARES, WIN, game_board, roll_die
 
-plt.title("Distribution of the number of turns")
-plt.xlabel("Number of turns")
-plt.ylabel("Average position")
-plt.plot(temp)
-plt.show()
+# Every random draw goes through np.random, so this is the seed that makes
+# runs repeatable.
+np.random.seed(42)
 
-# Draw a barplot using seaborn
-# print([i[1] for i in z])
-# print([i[0] for i in z])
-# print(z)
-# draw a histogram for z
-plt.title("Distribution of the boxes(cells on the board) visited")
-plt.xlabel("Box number")
-plt.ylabel("Probability of reaching box")
-plt.bar([i[1] for i in z], [i[0] for i in z])
-plt.show()
-
-transition_prob_simul = np.array(transition_prob_simul)
-for i in range(101):
-    sm = np.sum(transition_prob_simul[i])
-    for j in range(101):
-        if sm != 0:
-            transition_prob_simul[i][j] = transition_prob_simul[i][j]/sm
-
-    
-for i in transition_prob_simul:
-    for j in i:
-        print(j, end=' ')
-    print()
+NUM_GAMES = 1000
 
 
+def simulate_game(counts):
+    """Play one game, tallying observed transitions into `counts`.
 
+    Returns the squares visited in order, one entry per turn.  A turn where
+    the roll would overshoot square 100 counts as a turn in which the player
+    stayed put -- so it is recorded as a self-transition, exactly as the
+    analytic matrix models it.
+    """
+    current_square = 0
+    visited = []
+
+    while current_square < WIN:
+        squares_to_move = roll_die()
+        previous_square = current_square
+
+        # Overshooting the final square is not a legal move, so a roll that is
+        # too large leaves the player exactly where they are.
+        if current_square + squares_to_move <= WIN:
+            current_square += squares_to_move
+            # A snake or ladder moves the player on again.
+            if current_square in game_board:
+                current_square = game_board[current_square]
+
+        counts[previous_square][current_square] += 1
+        visited.append(current_square)
+
+    return visited
+
+
+def empirical_matrix(counts):
+    """Row-normalise observed transition counts into a probability matrix."""
+    T = np.asarray(counts, dtype=float)
+    row_sums = T.sum(axis=1, keepdims=True)
+    return np.divide(T, row_sums, out=np.zeros_like(T), where=row_sums != 0)
+
+
+def main():
+    counts = np.zeros((N_SQUARES, N_SQUARES), dtype=np.int64)
+
+    position_sum = {}
+    turn_freq = {}
+    visit_count = {}
+    turns = []
+    for _ in range(NUM_GAMES):
+        visited = simulate_game(counts)
+        turns.append(len(visited))
+        for turn, square in enumerate(visited, start=1):
+            visit_count[square] = visit_count.get(square, 0) + 1
+            position_sum[turn] = position_sum.get(turn, 0) + square
+            turn_freq[turn] = turn_freq.get(turn, 0) + 1
+
+    print(np.mean(turns))
+
+    average_position = [
+        position_sum[turn] / turn_freq[turn] for turn in sorted(position_sum)
+    ]
+
+    # Probability of being on a given square on a randomly chosen turn.
+    total_visits = sum(visit_count.values())
+    squares = sorted(visit_count)
+    visit_prob = [visit_count[s] / total_visits for s in squares]
+
+    plt.title("The number of turns to win the game")
+    plt.xlabel("Simulation Index(0-based)")
+    plt.ylabel("Number of turns game lasted for")
+    plt.plot(turns)
+    plt.show()
+
+    plt.title("Average position by turn number")
+    plt.xlabel("Number of turns")
+    plt.ylabel("Average position")
+    plt.plot(average_position)
+    plt.show()
+
+    plt.title("How often each square is occupied")
+    plt.xlabel("Box number")
+    plt.ylabel("Probability of occupying box on a given turn")
+    plt.bar(squares, visit_prob)
+    plt.show()
+
+    # Compare the simulated matrix against the analytic one from model.py.
+    simulated = empirical_matrix(counts)
+    np.savetxt("simulated_matrix.csv", simulated, delimiter=",")
+
+    analytic = model.transition_matrix()
+    visited_rows = [i for i in range(N_SQUARES) if counts[i].sum() > 0]
+    worst = max(np.max(np.abs(simulated[i] - analytic[i])) for i in visited_rows)
+    print("Simulated transition matrix written to simulated_matrix.csv")
+    print("Rows observed at least once: ", len(visited_rows), "of", N_SQUARES)
+    print("Largest disagreement with the analytic matrix: ", round(worst, 4))
+
+
+if __name__ == "__main__":
+    main()

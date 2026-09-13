@@ -1,9 +1,33 @@
-import numpy as np
-import random
+"""Markov-chain model of Snakes and Ladders.
+
+Builds the exact transition matrix for the board below, then uses it to
+answer the questions the project set out to answer: how long a game takes,
+how the position distribution spreads out over time, and after how many
+turns the chain has effectively settled (its limiting distribution).
+
+Squares are numbered 0-100, where 0 is "off the board" (the starting
+position) and 100 is the winning square.  A roll that would take the player
+past 100 is not played: the player stays where they are.
+
+Run as a script to reproduce every figure:  python model.py
+"""
+
 import matplotlib.pyplot as plt
-roll_high = 6 # set to number of faces on the die.
-random.seed(42)
-# Setup of the snakes and ladders
+import numpy as np
+
+# Seed numpy's global generator -- every random draw in this file goes
+# through np.random, so this is the seed that actually makes runs repeatable.
+np.random.seed(42)
+
+N_SQUARES = 101  # squares 0..100 inclusive
+WIN = 100
+DEFAULT_ROLL_HIGH = 6  # number of faces on the die
+N_GAMES = 1000
+COMPLETION_STEPS = 300
+
+# The snakes and ladders: a key is the square landed on, the value is the
+# square the player is moved to.  Values above the key are ladders, below
+# are snakes.
 game_board = {
     1: 38,
     4: 14,
@@ -23,182 +47,210 @@ game_board = {
     87: 24,
     93: 73,
     95: 75,
-    98: 78
+    98: 78,
 }
 
 
 def matrix_exp(A, n):
-    # Compute the exponent of the matrix using numpy's matrix power function
-    temp = A.copy()
-    for i in range(1,n):
-        temp = temp @ A
-    return temp
-
-def roll_die(roll_high):
-    return np.random.randint(1, roll_high+1)
+    """Return A raised to the n-th power (n == 0 gives the identity)."""
+    return np.linalg.matrix_power(A, n)
 
 
-# Define a transition probability matrix for the above game board
-def transition_matrix(roll):
-    # Initialize the transition matrix
-    T = np.zeros((101, 101))
+def roll_die(roll_high=DEFAULT_ROLL_HIGH):
+    """Return a uniform roll in 1..roll_high."""
+    return np.random.randint(1, roll_high + 1)
 
-    # Loop through the squares on the board
-    for i in range(0, 101):
-        # Loop through the possible die rolls
-        for j in range(1, roll+1):
-            # Determine the new square
+
+def transition_matrix(roll=DEFAULT_ROLL_HIGH):
+    """Build the one-step transition matrix for a die with `roll` faces."""
+    T = np.zeros((N_SQUARES, N_SQUARES))
+
+    for i in range(N_SQUARES):
+        for j in range(1, roll + 1):
             new_square = i + j
-            # Check if the new square is on a ladder or snake
-            if new_square in game_board:
+            # Overshooting the final square is not a legal move: stay put.
+            if new_square > WIN:
+                new_square = i
+            # A snake or ladder moves the player on again.
+            elif new_square in game_board:
                 new_square = game_board[new_square]
 
-            if new_square > 100:
-                new_square = i
-
-            # Update the transition matrix
             T[i, new_square] += 1 / roll
-    # Update the transition matrix for the last square
-    T[100, 100] = 1
+
+    # The winning square is absorbing.
+    T[WIN] = 0.0
+    T[WIN, WIN] = 1.0
     return T
 
 
-mat = transition_matrix(6)
-flag = True
-# No need to check the last row we manually set it to 1
-for i in range(100):
-    if sum(mat[i]) != 0.9999999999999999:
-        flag = False
-        break
-
-print("The sum of all rows is 1: ", flag)
-
-
-
-plt.matshow(mat)
-plt.title("Transition Probability Matrix")
-plt.show()
-# Write all the values of the transition probability matrix mat into a csv file called "transition_matrix.csv"
-np.savetxt("matrix.csv", mat, delimiter=",")
-# use the above board to simulate a game of snakes and ladders
-hash = {}
-freq = {}
-boxmap = {}
-
-
 def simulate_game(T, current_state=0):
-    # Use matrix alegbra, to simulate the game
-    # We start with the initial distribution
-    # Then we multiply it by the transition matrix
-    turns = 0
-    while current_state < 100:
-        current_state = np.random.choice(range(101), p=T[current_state])
-        # print(current_state)
-        turns += 1
-        if current_state in boxmap.keys():
-            boxmap[current_state] = boxmap[current_state] + 1
-        else:
-            boxmap[current_state] = 1
-        if turns in hash.keys():
-            hash[turns] = hash[turns] + 1
-            freq[turns] = freq[turns] + 1
-        else:
-            hash[turns] = current_state
-            freq[turns] = 1
-    return turns
+    """Play one game by sampling from `T`; return the squares visited in order."""
+    visited = []
+    while current_state < WIN:
+        current_state = np.random.choice(N_SQUARES, p=T[current_state])
+        visited.append(current_state)
+    return visited
 
 
-# Simulate 1000 games
-turns = []
-for i in range(1000):
-    turns.append(simulate_game(mat))
-print(np.mean(turns))
+def reachable_squares(T, start=0):
+    """Squares that can actually be occupied at the end of a turn, from `start`.
 
-for i in hash.keys():
-    hash[i] = hash[i] / freq[i]
-x = sorted(hash.keys())
-temp = []
-
-for i in x:
-    temp.append(hash[i])
-
-y = sorted(boxmap.values(), reverse=True)
-
-box_li = []
-for i in boxmap.keys():
-    tup = (boxmap[i], i)
-    box_li.append(tup)
-
-sorted_box_li = sorted(box_li, reverse=True)
-# print(sorted_box_li)
-# Print the distribution of the boxes visited(probability of reaching box)
-summy = np.sum(turns)
-z = []
-for i in sorted_box_li:
-    z.append([i[0] / summy, i[1]])
-
-# Plot the histogram of the number of turns
-plt.title("The number of turns to win the game")
-plt.xlabel("Index of the Simulation(0-based)")
-plt.ylabel("Number of turns simulation lasted for")
-plt.plot(turns)
-plt.show()
-
-plt.title("Distribution of the number of turns")
-plt.xlabel("Number of turns")
-plt.ylabel("Average position")
-plt.plot(temp)
-plt.show()
-
-plt.title("Distribution of the boxes(cells on the board) visited")
-plt.xlabel("Box number")
-plt.ylabel("Probability of reaching box")
-plt.bar([i[1] for i in z], [i[0] for i in z])
-plt.show()
+    Every snake and ladder head is excluded: landing on one moves the player
+    straight on, so no head is ever the square a turn ends on.
+    """
+    reachable = {start}
+    frontier = [start]
+    while frontier:
+        square = frontier.pop()
+        for successor in np.nonzero(T[square])[0]:
+            successor = int(successor)
+            if successor not in reachable:
+                reachable.add(successor)
+                frontier.append(successor)
+    return sorted(reachable)
 
 
-# For sharing particular distributions after some time
-def sharing_distribution(T, n):
-    mat = T.copy()
-    initial_distribution = np.zeros(101)
-    initial_distribution[0] = 1.
-    b = initial_distribution @ matrix_exp(mat, n)
-    np.savetxt("share.csv", b, delimiter=",")
-    plt.title("Initial Distribution after " +  str(n) + " transitions")
-    plt.bar(range(101), b)
-    plt.show()
+def expected_turns(T, start=0):
+    """Exact expected number of turns to reach square 100, from the chain itself.
+
+    Drops the absorbing square to leave the substochastic matrix Q, then sums a
+    row of the fundamental matrix (I - Q)^-1.  Rows for unreachable snake and
+    ladder heads are kept: they are ordinary stochastic rows that all lead to
+    100 eventually, so I - Q stays well conditioned, and their presence does
+    not affect the answer for a reachable `start`.
+    """
+    if start == WIN:
+        return 0.0
+    Q = np.delete(np.delete(T, WIN, axis=0), WIN, axis=1)
+    fundamental = np.linalg.inv(np.eye(len(Q)) - Q)
+    return fundamental.sum(axis=1)[start]
+
 
 def sharing_distribution_plot(T, n):
-    mat = T.copy()
-    initial_distribution = np.zeros(101)
-    initial_distribution[0] = 1.
-    b = initial_distribution @ matrix_exp(mat, n)
+    """Return the position distribution after `n` turns, starting from square 0."""
+    initial_distribution = np.zeros(N_SQUARES)
+    initial_distribution[0] = 1.0
+    return initial_distribution @ matrix_exp(T, n)
 
+
+def sharing_distribution(T, n):
+    """Plot the position distribution after `n` turns and save it to share.csv."""
+    b = sharing_distribution_plot(T, n)
     np.savetxt("share.csv", b, delimiter=",")
+    plt.title("Initial Distribution after " + str(n) + " transitions")
+    plt.bar(range(N_SQUARES), b)
+    plt.show()
     return b
-
-plt.title("Game completion time")
-plt.xlabel("Number of turns")
-plt.ylabel("% of game completed")
-for roll in range(6, 9):
-    percent_dist = [sharing_distribution_plot(transition_matrix(roll), n)[-1] * 100 for n in range(300)]
-    plt.plot(np.arange(300), percent_dist)
-plt.legend(["Max die roll= 6", "Max die roll = 7", "Max die roll = 8"])
-plt.show()
-# feel free to change the input value here see the various distributions after some time
-sharing_distribution(mat, 10) # makes sense
-
 
 
 def limiting_distribution(M, n, epsilon):
-    # compute M^n-1 and M^n and find the max difference between them if the max diff is below tolerance then its
-    # limiting
-    diff = matrix_exp(M,n)-matrix_exp(M,n-1)
-    max_diff = np.max(diff)
-    if (max_diff<epsilon):
-        return True
+    """True if M^n and M^(n-1) agree to within `epsilon` in every entry."""
+    diff = matrix_exp(M, n) - matrix_exp(M, n - 1)
+    return bool(np.max(np.abs(diff)) < epsilon)
 
-for i in range(2,100):
-    if limiting_distribution(mat, i, 0.0001):
-        print(i)
-        break
+
+def first_limiting_power(M, epsilon, max_n=600):
+    """Smallest n <= max_n for which the chain has settled, else None.
+
+    Walks the powers incrementally instead of recomputing M^n from scratch
+    for every candidate n.
+    """
+    previous = np.eye(len(M))
+    current = M.copy()
+    for n in range(1, max_n + 1):
+        if np.max(np.abs(current - previous)) < epsilon:
+            return n
+        previous, current = current, current @ M
+    return None
+
+
+def completion_curve(roll, steps=COMPLETION_STEPS):
+    """Percentage of games finished after 0, 1, ... steps-1 turns."""
+    T = transition_matrix(roll)
+    distribution = np.zeros(N_SQUARES)
+    distribution[0] = 1.0
+    finished = []
+    for _ in range(steps):
+        finished.append(distribution[WIN] * 100)
+        distribution = distribution @ T
+    return finished
+
+
+def main():
+    mat = transition_matrix(DEFAULT_ROLL_HIGH)
+
+    row_sums = mat.sum(axis=1)
+    print("The sum of all rows is 1: ", bool(np.allclose(row_sums, 1.0)))
+
+    plt.matshow(mat)
+    plt.title("Transition Probability Matrix")
+    plt.show()
+    # Save every entry of the transition matrix to matrix.csv
+    np.savetxt("matrix.csv", mat, delimiter=",")
+
+    # Simulate games by sampling from the transition matrix.
+    position_sum = {}
+    turn_freq = {}
+    visit_count = {}
+    turns = []
+    for _ in range(N_GAMES):
+        visited = simulate_game(mat)
+        turns.append(len(visited))
+        for turn, square in enumerate(visited, start=1):
+            visit_count[square] = visit_count.get(square, 0) + 1
+            position_sum[turn] = position_sum.get(turn, 0) + square
+            turn_freq[turn] = turn_freq.get(turn, 0) + 1
+
+    print(np.mean(turns))
+    print("Exact expected number of turns: ", round(expected_turns(mat), 4))
+
+    average_position = [
+        position_sum[turn] / turn_freq[turn] for turn in sorted(position_sum)
+    ]
+
+    # Probability of being on a given square on a randomly chosen turn.
+    total_visits = sum(visit_count.values())
+    squares = sorted(visit_count)
+    visit_prob = [visit_count[s] / total_visits for s in squares]
+
+    plt.title("The number of turns to win the game")
+    plt.xlabel("Index of the Simulation(0-based)")
+    plt.ylabel("Number of turns simulation lasted for")
+    plt.plot(turns)
+    plt.show()
+
+    plt.title("Average position by turn number")
+    plt.xlabel("Number of turns")
+    plt.ylabel("Average position")
+    plt.plot(average_position)
+    plt.show()
+
+    plt.title("How often each square is occupied")
+    plt.xlabel("Box number")
+    plt.ylabel("Probability of occupying box on a given turn")
+    plt.bar(squares, visit_prob)
+    plt.show()
+
+    plt.title("Game completion time")
+    plt.xlabel("Number of turns")
+    plt.ylabel("% of game completed")
+    rolls = range(6, 9)
+    for roll in rolls:
+        plt.plot(np.arange(COMPLETION_STEPS), completion_curve(roll))
+    plt.legend(["Max die roll= " + str(r) for r in rolls])
+    plt.show()
+
+    # Feel free to change the input value here to see the distribution at
+    # other points in time.
+    sharing_distribution(mat, 10)
+
+    epsilon = 0.0001
+    n = first_limiting_power(mat, epsilon)
+    if n is None:
+        print("No limiting distribution within the search range for epsilon =", epsilon)
+    else:
+        print(n)
+
+
+if __name__ == "__main__":
+    main()

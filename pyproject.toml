@@ -1,0 +1,8 @@
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "A", "C4", "SIM", "RET", "ARG", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["test_model.py"]
