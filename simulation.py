@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import model
-from model import N_SQUARES, SEED, WIN, game_board, roll_die
+from model import N_SQUARES, SEED, WIN, average_position_by_turn, game_board, roll_die
 
 NUM_GAMES = 1000
 
@@ -71,9 +71,7 @@ def main():
 
     print(np.mean(turns))
 
-    average_position = [
-        position_sum[turn] / turn_freq[turn] for turn in sorted(position_sum)
-    ]
+    average_position = average_position_by_turn(position_sum, turn_freq)
 
     # Probability of being on a given square on a randomly chosen turn.
     total_visits = sum(visit_count.values())
@@ -86,9 +84,9 @@ def main():
     plt.plot(turns)
     plt.show()
 
-    plt.title("Average position by turn number")
+    plt.title("Average position while the game is still running")
     plt.xlabel("Number of turns")
-    plt.ylabel("Average position")
+    plt.ylabel("Mean square of games still in play")
     plt.plot(average_position)
     plt.show()
 

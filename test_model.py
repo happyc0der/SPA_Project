@@ -303,3 +303,92 @@ def test_simulated_visits_record_the_square_the_turn_ended_on():
         analytic = model.transition_matrix()
         for a, b in itertools.pairwise([0, *visited]):
             assert analytic[a, b] > 0, f"{a} -> {b} is not a legal transition"
+
+
+def test_turn_frequencies_only_decrease():
+    """average_position_by_turn relies on this to stop at the first thin turn."""
+    np.random.seed(23)
+    T = model.transition_matrix()
+    turn_freq = {}
+    for _ in range(300):
+        for turn, _square in enumerate(model.simulate_game(T), start=1):
+            turn_freq[turn] = turn_freq.get(turn, 0) + 1
+    counts = [turn_freq[t] for t in sorted(turn_freq)]
+    assert all(b <= a for a, b in itertools.pairwise(counts))
+
+
+def test_average_position_curve_is_cut_where_samples_run_thin():
+    position_sum = {1: 100, 2: 200, 3: 300, 4: 400}
+    turn_freq = {1: 50, 2: 40, 3: 5, 4: 2}
+    curve = model.average_position_by_turn(position_sum, turn_freq, min_games=30)
+    assert curve == [2.0, 5.0], "turns backed by 5 and 2 games must be dropped"
+
+
+def test_average_position_curve_tracks_the_conditional_expectation():
+    """The curve averages games still in play, not all games."""
+    np.random.seed(29)
+    T = model.transition_matrix()
+    position_sum, turn_freq = {}, {}
+    for _ in range(4000):
+        for turn, square in enumerate(model.simulate_game(T), start=1):
+            position_sum[turn] = position_sum.get(turn, 0) + square
+            turn_freq[turn] = turn_freq.get(turn, 0) + 1
+    curve = model.average_position_by_turn(position_sum, turn_freq)
+
+    squares = np.arange(model.N_SQUARES)
+    distribution = np.zeros(model.N_SQUARES)
+    distribution[0] = 1.0
+    for turn, plotted in enumerate(curve, start=1):
+        distribution = distribution @ T
+        unfinished = distribution.copy()
+        unfinished[model.WIN] = 0.0
+        conditional = (unfinished @ squares) / unfinished.sum()
+        unconditional = distribution @ squares
+        # Positions are spread over roughly 25 squares, so each plotted point
+        # has a standard error near 25/sqrt(n).  Allow three of those plus a
+        # small constant: the curve sits a little above the conditional mean
+        # because a game contributes its winning 100 on its final turn.
+        tolerance = 2.5 + 3 * 25 / np.sqrt(turn_freq[turn])
+        assert abs(plotted - conditional) < tolerance, (
+            f"turn {turn} ({turn_freq[turn]} games) is off the conditional curve"
+        )
+        if turn >= 40:
+            # By here the two differ enough that confusing them would show up.
+            assert unconditional - conditional > 20
+
+
+def test_every_plotted_point_is_backed_by_enough_games():
+    np.random.seed(31)
+    T = model.transition_matrix()
+    position_sum, turn_freq = {}, {}
+    for _ in range(500):
+        for turn, square in enumerate(model.simulate_game(T), start=1):
+            position_sum[turn] = position_sum.get(turn, 0) + square
+            turn_freq[turn] = turn_freq.get(turn, 0) + 1
+    curve = model.average_position_by_turn(position_sum, turn_freq)
+    assert 0 < len(curve) < max(turn_freq), "the curve must be truncated"
+    for turn in range(1, len(curve) + 1):
+        assert turn_freq[turn] >= model.MIN_GAMES_PER_TURN
+
+
+def test_square_occupancy_matches_the_fundamental_matrix():
+    """Visits per square must match (I - Q)^-1, the exact expected visit counts.
+
+    The fundamental matrix counts the player as occupying the starting square,
+    which `visited` does not record, so square 0 carries one extra visit.
+    """
+    np.random.seed(37)
+    T = model.transition_matrix()
+    games = 6000
+    visits = np.zeros(model.N_SQUARES)
+    for _ in range(games):
+        for square in model.simulate_game(T):
+            visits[square] += 1
+    visits /= games
+
+    Q = np.delete(np.delete(T, model.WIN, axis=0), model.WIN, axis=1)
+    expected = np.append(np.linalg.inv(np.eye(len(Q)) - Q)[0], 1.0)
+    expected[0] -= 1.0  # the start is occupied but never moved to
+
+    assert np.max(np.abs(visits - expected)) < 0.1
+    assert visits.sum() == pytest.approx(model.expected_turns(T), rel=0.05)

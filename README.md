@@ -25,7 +25,7 @@ Needs Python 3.10 or newer.
 pip install -r requirements.txt
 python model.py       # the analysis and its figures
 python simulation.py  # the brute-force check
-pytest                # 42 tests
+pytest                # 47 tests
 ```
 
 Each script opens its figures one at a time; close a window to get the next.
@@ -84,6 +84,17 @@ player walks 26, 27, … 47, lands on 48, and the snake there returns them to 26
 forever. Only 18 squares are reachable and 100 is not among them. `simulate_game`
 raises rather than looping, and `expected_turns` reports the square as
 unreachable instead of returning a number.
+
+### Reading the "average position" figure
+
+That curve is the mean square of the games **still in play** on a given turn, not
+the average position of a player in a typical game. The difference is large: by
+turn 80 the unconditional mean is 97, because most games have finished and are
+sitting on square 100, while the games still running average 61.
+
+It is also truncated at the last turn backed by at least 30 games. Untruncated it
+ran to turn 213, where 11% of the points came from a single game — noise drawn as
+signal.
 
 ### 82 of the 101 squares are reachable
 
