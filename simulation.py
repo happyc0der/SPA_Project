@@ -12,11 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import model
-from model import N_SQUARES, WIN, game_board, roll_die
-
-# Every random draw goes through np.random, so this is the seed that makes
-# runs repeatable.
-np.random.seed(42)
+from model import N_SQUARES, SEED, WIN, game_board, roll_die
 
 NUM_GAMES = 1000
 
@@ -58,6 +54,7 @@ def empirical_matrix(counts):
 
 
 def main():
+    np.random.seed(SEED)
     counts = np.zeros((N_SQUARES, N_SQUARES), dtype=np.int64)
 
     position_sum = {}

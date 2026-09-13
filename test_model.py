@@ -227,3 +227,33 @@ def test_expected_turns_from_the_winning_square_is_zero():
 
 def test_both_files_roll_the_same_die():
     assert simulation.roll_die is model.roll_die
+
+
+def test_importing_the_modules_does_not_reseed_the_global_generator():
+    """A module that seeds at import time silently resets its caller's RNG."""
+    import importlib
+
+    np.random.seed(1234)
+    expected = np.random.rand()
+    np.random.seed(1234)
+    importlib.reload(model)
+    importlib.reload(simulation)
+    assert np.random.rand() == expected
+
+
+def test_transition_matrix_rejects_a_die_with_no_faces():
+    for roll in (0, -3):
+        with pytest.raises(ValueError, match="at least one face"):
+            model.transition_matrix(roll)
+
+
+def test_expected_turns_rejects_an_out_of_range_square():
+    T = model.transition_matrix()
+    for start in (-1, 101):
+        with pytest.raises(ValueError, match="must be a square"):
+            model.expected_turns(T, start)
+
+
+def test_a_one_sided_die_still_builds_a_valid_chain():
+    T = model.transition_matrix(1)
+    assert np.allclose(T.sum(axis=1), 1.0)

@@ -1,5 +1,10 @@
+[project]
+name = "spa-project"
+version = "0.1.0"
+requires-python = ">=3.10"
+
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "A", "C4", "SIM", "RET", "ARG", "RUF"]

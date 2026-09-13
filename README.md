@@ -19,15 +19,18 @@ simulation needed. `simulation.py` exists to confirm the matrix is right.
 
 ## Running it
 
+Needs Python 3.10 or newer.
+
 ```bash
 pip install -r requirements.txt
 python model.py       # the analysis and its figures
 python simulation.py  # the brute-force check
-pytest                # 34 tests
+pytest                # 38 tests
 ```
 
 Each script opens its figures one at a time; close a window to get the next.
-Both seed `numpy`'s generator, so repeated runs give identical numbers.
+Both seed `numpy`'s generator inside `main()`, so repeated runs give identical
+numbers while importing either module leaves your own random state alone.
 
 Generated files (all git-ignored): `matrix.csv` (the transition matrix),
 `share.csv` (the position distribution after 10 turns), `simulated_matrix.csv`

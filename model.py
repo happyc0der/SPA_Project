@@ -15,9 +15,10 @@ Run as a script to reproduce every figure:  python model.py
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Seed numpy's global generator -- every random draw in this file goes
-# through np.random, so this is the seed that actually makes runs repeatable.
-np.random.seed(42)
+# Seeded in main() rather than here: every random draw in this file goes
+# through np.random, so seeding at import time would silently reset the global
+# generator of anything that imports this module.
+SEED = 42
 
 N_SQUARES = 101  # squares 0..100 inclusive
 WIN = 100
@@ -63,6 +64,8 @@ def roll_die(roll_high=DEFAULT_ROLL_HIGH):
 
 def transition_matrix(roll=DEFAULT_ROLL_HIGH):
     """Build the one-step transition matrix for a die with `roll` faces."""
+    if roll < 1:
+        raise ValueError(f"a die needs at least one face, got {roll}")
     T = np.zeros((N_SQUARES, N_SQUARES))
 
     for i in range(N_SQUARES):
@@ -119,6 +122,8 @@ def expected_turns(T, start=0):
     100 eventually, so I - Q stays well conditioned, and their presence does
     not affect the answer for a reachable `start`.
     """
+    if not 0 <= start <= WIN:
+        raise ValueError(f"start must be a square in 0..{WIN}, got {start}")
     if start == WIN:
         return 0.0
     Q = np.delete(np.delete(T, WIN, axis=0), WIN, axis=1)
@@ -177,6 +182,7 @@ def completion_curve(roll, steps=COMPLETION_STEPS):
 
 
 def main():
+    np.random.seed(SEED)
     mat = transition_matrix(DEFAULT_ROLL_HIGH)
 
     row_sums = mat.sum(axis=1)
