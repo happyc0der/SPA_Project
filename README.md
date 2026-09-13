@@ -25,7 +25,7 @@ Needs Python 3.10 or newer.
 pip install -r requirements.txt
 python model.py       # the analysis and its figures
 python simulation.py  # the brute-force check
-pytest                # 38 tests
+pytest                # 42 tests
 ```
 
 Each script opens its figures one at a time; close a window to get the next.
@@ -78,6 +78,12 @@ near the end of the board are too large to play, and the turn is wasted.
 Going the other way is not monotone either: a **d3 is worse than a d2**
 (81.18 turns against 72.01). With three faces the reachable squares line up
 badly against this board's snakes.
+
+Below that the board stops working altogether. A **d1 can never be won**: the
+player walks 26, 27, … 47, lands on 48, and the snake there returns them to 26,
+forever. Only 18 squares are reachable and 100 is not among them. `simulate_game`
+raises rather than looping, and `expected_turns` reports the square as
+unreachable instead of returning a number.
 
 ### 82 of the 101 squares are reachable
 

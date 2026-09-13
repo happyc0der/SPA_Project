@@ -24,6 +24,7 @@ N_SQUARES = 101  # squares 0..100 inclusive
 WIN = 100
 DEFAULT_ROLL_HIGH = 6  # number of faces on the die
 N_GAMES = 1000
+MAX_TURNS = 100_000  # a game longer than this means the board cannot be won
 COMPLETION_STEPS = 300
 
 # The snakes and ladders: a key is the square landed on, the value is the
@@ -87,11 +88,21 @@ def transition_matrix(roll=DEFAULT_ROLL_HIGH):
 
 
 def simulate_game(T, current_state=0):
-    """Play one game by sampling from `T`; return the squares visited in order."""
+    """Play one game by sampling from `T`; return the squares visited in order.
+
+    Raises if the game runs past MAX_TURNS.  Not every die makes this board
+    winnable -- a 1-sided die traps the player in the loop 26..47 -> 48 -> 26,
+    so square 100 is never reached and the loop would otherwise never end.
+    """
     visited = []
     while current_state < WIN:
         current_state = np.random.choice(N_SQUARES, p=T[current_state])
         visited.append(current_state)
+        if len(visited) > MAX_TURNS:
+            raise RuntimeError(
+                f"no win after {MAX_TURNS} turns from square {current_state}; "
+                "this board and die cannot reach square 100"
+            )
     return visited
 
 
@@ -126,6 +137,11 @@ def expected_turns(T, start=0):
         raise ValueError(f"start must be a square in 0..{WIN}, got {start}")
     if start == WIN:
         return 0.0
+    if WIN not in reachable_squares(T, start):
+        raise ValueError(
+            f"square {WIN} is unreachable from square {start} with this die, "
+            "so the expected number of turns is infinite"
+        )
     Q = np.delete(np.delete(T, WIN, axis=0), WIN, axis=1)
     fundamental = np.linalg.inv(np.eye(len(Q)) - Q)
     return fundamental.sum(axis=1)[start]

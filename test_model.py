@@ -254,6 +254,52 @@ def test_expected_turns_rejects_an_out_of_range_square():
             model.expected_turns(T, start)
 
 
-def test_a_one_sided_die_still_builds_a_valid_chain():
+def test_a_one_sided_die_makes_the_board_unwinnable():
+    """d1 is a valid stochastic matrix but traps the player in a cycle.
+
+    Row sums of 1 are not enough to say the game can be won -- checking only
+    that is false assurance.
+    """
     T = model.transition_matrix(1)
     assert np.allclose(T.sum(axis=1), 1.0)
+    assert model.WIN not in model.reachable_squares(T)
+    assert np.linalg.matrix_power(T, 5000)[0, model.WIN] == 0.0
+
+
+def test_an_unwinnable_board_raises_instead_of_looping_forever():
+    T = model.transition_matrix(1)
+    with pytest.raises(RuntimeError, match="cannot reach square 100"):
+        model.simulate_game(T)
+
+
+def test_expected_turns_rejects_an_unwinnable_board():
+    T = model.transition_matrix(1)
+    with pytest.raises(ValueError, match="unreachable"):
+        model.expected_turns(T)
+
+
+def test_completion_curve_matches_the_matrix_powers_exactly():
+    """Pins the off-by-one: curve[n] is P(absorbed by turn n), not turn n+1."""
+    T = model.transition_matrix(6)
+    curve = model.completion_curve(6, steps=12)
+    for n, value in enumerate(curve):
+        expected = np.linalg.matrix_power(T, n)[0, model.WIN] * 100
+        assert value == pytest.approx(expected, abs=1e-12)
+    # The first turn a win is possible is 7, so turn 6 must still read zero.
+    assert curve[6] == 0.0
+    assert curve[7] == pytest.approx(0.156464, abs=1e-5)
+
+
+def test_simulated_visits_record_the_square_the_turn_ended_on():
+    """`visited` must hold post-snake/ladder squares, never the pre-move one."""
+    np.random.seed(17)
+    counts = np.zeros((model.N_SQUARES, model.N_SQUARES), dtype=np.int64)
+    for _ in range(400):
+        visited = simulation.simulate_game(counts)
+        assert visited[-1] == model.WIN, "a finished game must end on square 100"
+        # No visit may land on a snake or ladder head.
+        assert not set(visited) & set(model.game_board)
+        # Every consecutive pair must be a transition the model allows.
+        analytic = model.transition_matrix()
+        for a, b in itertools.pairwise([0, *visited]):
+            assert analytic[a, b] > 0, f"{a} -> {b} is not a legal transition"
